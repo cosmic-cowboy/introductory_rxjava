@@ -70,5 +70,56 @@ public class HowToUseRxJavaTest {
 	}
 
 
+	@Test
+	public void RxJavaの基本的な動きを確認する_subscribeOnを使用() throws InterruptedException{
+		final CountDownLatch latch = new CountDownLatch(1);
+		final StringBuffer sb = new StringBuffer();
+		final List<String> list = new ArrayList<>();
+		
+		// メインスレッドで実行
+		sb.append("start:");
+		
+		Observable.just(10)
+		// 別スレッドを立ち上げる
+		.subscribeOn(Schedulers.newThread())
+		.map(
+				// map
+				t -> {  
+					try {
+						Thread.sleep(500);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					sb.append("map");
+					list.add("1:" + Thread.currentThread().getName());
+					return t;
+		})
+		.subscribe(
+				// onNext
+				t -> {
+					sb.append("onNext");
+					list.add("2:" + Thread.currentThread().getName());
+				}, 
+				// onError
+				error -> {
+					list.add("4:" + Thread.currentThread().getName());
+					sb.append("onError"); 
+				},
+				// onComplete
+				() -> {
+					list.add("3:" + Thread.currentThread().getName());
+					sb.append("onComplete");
+				});
+
+		// メインスレッドで実行
+		sb.append("end");
+		
+		latch.await(1, TimeUnit.SECONDS);
+		assertThat(sb.toString(), is("start:endmaponNextonComplete"));
+		IntStream.range(0, list.size()).forEach(
+				i -> assertThat(list.get(i), is(startsWith(i+1 + ":RxNewThreadScheduler")))
+		);
+	}
+
 	
 }
